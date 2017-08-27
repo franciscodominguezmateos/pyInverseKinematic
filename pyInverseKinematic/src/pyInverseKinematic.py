@@ -98,7 +98,7 @@ class Arm():
         Jp=la.pinv(J)
         dr=(rg-ri)
         dq=Jp*dr
-        alpha=1
+        alpha=1.0
         qi1=qi+alpha*dq
         return qi1
     #inverse diffrentialkinematics
@@ -109,22 +109,31 @@ class Arm():
         qi1=qi+dq
         return qi1
     #inverse constrained kinematics
-    def ikStepConstrained(self,qi,q1):
+    def ikStopStepConstrained(self,qi,q1):
         J=self.J(qi)
         Jp=la.pinv(J)
-        I=np.matrix([[1,0,0],[0,1,0],[0,0,1]])
+        I=np.matrix([[1,0,0],
+                     [0,1,0],
+                     [0,0,1]])
         N=I-Jp*J
-        #dr=rg-ri
-        #dq=Jp*dr+N*q0
-        Jq1=np.matrix([1,0,0])
-        dq=N*la.pinv(Jq1*N)*q1
+        dq=N*q1
+        qi1=qi+dq
+        return qi1
+    def ikStepConstrained(self,qi,dr,q1):
+        J=self.J(qi)
+        Jp=la.pinv(J)
+        I=np.matrix([[1,0,0],
+                     [0,1,0],
+                     [0,0,1]])
+        N=I-Jp*J
+        dq=Jp*dr+N*q1
         qi1=qi+dq
         return qi1
     
 vs.scene.up=((1,0,0))
 a=Arm()
-q0=np.matrix([[0],[0],[0]])
-rg=np.matrix([15,25,0]).T
+q0=np.matrix([[0.25],[0.25],[0.5]])
+rg=np.matrix([12,29,0]).T
 a.setGoal(rg)
 qi=q0
 ri=a.r(qi)
@@ -140,9 +149,17 @@ while True:
         print ri,la.norm(rg-ri)
     while True:
         vs.rate(20)
-        st=sin(t)
+        st=sin(t)/1.0
         qc=np.matrix([[st],[0],[0]])
-        qi=a.ikStepConstrained(qi,st/20)
+        qi=a.ikStepConstrained(qi,qc/2,qc/10)
+        a.update(qi)
+        t+=0.1
+        #print st
+    while True:
+        vs.rate(10)
+        st=sin(t)/20.0
+        qc=np.matrix([[st],[0],[0]])
+        qi=a.ikStopStepConstrained(qi,qc)
         a.update(qi)
         t+=0.1
         #print st
